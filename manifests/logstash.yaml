@@ -1,0 +1,77 @@
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash
+  namespace: default
+spec:
+  count: 1
+  version: 8.18.1
+  elasticsearchRefs:
+  - name: elasticsearch
+    serviceName: elasticsearch-es-http
+    clusterName: elasticsearch
+  config:
+    xpack.monitoring.enabled: false  # Disable X-Pack monitoring
+  #  log.level: debug  # Keep debug logging
+    #xpack.monitoring.enabled: true
+    #xpack.monitoring.elasticsearch.hosts: ["https://elasticsearch-es-http:9200"]
+    # Removed ssl.certificate_authority since we're disabling cert verification
+  pipelines:
+  - pipeline.id: main
+    path.config: /usr/share/logstash/pipeline/asm.conf
+  podTemplate:
+    spec:
+      containers:
+      - name: logstash
+        env:
+      #  - name: LOG_LEVEL
+      #    value: "debug"
+        - name: ELASTICSEARCH_HOSTS
+          value: "https://elasticsearch-es-http:9200"
+        - name: ELASTIC_USERNAME
+          value: "elastic"
+        - name: ELASTIC_PASSWORD
+          value: "<elasticsearch-password>"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: "0.5"
+          limits:
+            memory: 2Gi
+            cpu: "1"
+        volumeMounts:
+        - name: pipeline
+          mountPath: /usr/share/logstash/pipeline
+        - name: geoip
+          mountPath: /usr/share/logstash/geoip
+        - name: ca-cert
+          mountPath: /etc/logstash/certificate
+        # Removed elasticsearch-ca volumeMount since cert verification is disabled
+      volumes:
+      - name: pipeline
+        hostPath:
+          path: /etc/logstash/pipelines
+          type: Directory
+      - name: geoip
+        hostPath:
+          path: /etc/logstash/geoip
+          type: Directory
+      - name: api-credentials
+        secret:
+          secretName: logstash-api-credentials
+      - name: ca-cert
+        hostPath:
+          path: /etc/logstash/certificate
+
+      # Removed elasticsearch-ca volume since cert verification is disabled
+  services:
+  - name: syslog
+    service:
+      spec:
+        type: NodePort
+        ports:
+        - port: 5244
+          name: syslog
+          protocol: TCP
+          targetPort: 5244
+          nodePort: 30044  # Adjust if needed to avoid conflicts

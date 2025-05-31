@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: elasticsearch-local-pv
+spec:
+  capacity:
+    storage: 40Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path           # Match your StorageClass (K3s default local storage)
+  local:
+    path: /elasticsearch-data             # Local directory on the node to store data
+  nodeAffinity:                           # Bind PV to a specific node by hostname
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - appsec-k3s               # Replace with your actual node hostname (`kubectl get nodes -o wide`)
+  persistentVolumeReclaimPolicy: Retain  # Retain data even if PVC is deleted
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elasticsearch-local-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path            # Must match PV’s storageClassName
+  resources:
+    requests:
+      storage: 40Gi
+  volumeName: elasticsearch-local-pv     # Explicitly bind to the PV above

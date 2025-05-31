@@ -1,0 +1,30 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+  namespace: default
+spec:
+  version: 8.18.1
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+    serviceName: elasticsearch-es-http
+  http:
+    service:
+      spec:
+        type: NodePort
+        ports:
+        - port: 5601
+          targetPort: 5601
+          nodePort: 30080
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: "0.5"
+          limits:
+            memory: 2Gi
+            cpu: "1"
